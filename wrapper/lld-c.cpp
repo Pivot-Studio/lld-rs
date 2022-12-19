@@ -67,6 +67,7 @@ LldInvokeResult mun_lld_link(LldFlavor flavor, int argc, const char *const *argv
     }
     case MachO:
     {
+      args.insert(args.begin(), "lld");
       std::unique_lock <std::mutex> lock(_machOMutex);
       result.success = lld::macho::link(args, outputStream, errorStream, false, false);
       break;
