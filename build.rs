@@ -401,7 +401,7 @@ fn main() {
     // Build the extra wrapper functions.
     std::env::set_var("CXXFLAGS", get_llvm_cxxflags());
     cc::Build::new()
-        .cpp(true)
+        .cpp(true).static_crt(true)
         .file("wrapper/lld-c.cpp")
         .compile("lldwrapper");
 
