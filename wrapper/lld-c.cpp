@@ -83,6 +83,9 @@ LldInvokeResult mun_lld_link(LldFlavor flavor, int argc, const char *const *argv
       result.success = false;
       break;
   }
+  // Delete the global context and clear the global context pointer, so that it
+  // cannot be accessed anymore.
+  lld::CommonLinkerContext::destroy();
   std::string resultMessage = errorStream.str() + outputStream.str();
   result.messages = mun_alloc_str(resultMessage);
   return result;
