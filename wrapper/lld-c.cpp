@@ -44,48 +44,20 @@ void mun_link_free_result(LldInvokeResult* result)
   }
 }
 
-LldInvokeResult mun_lld_link(LldFlavor flavor, int argc, const char *const *argv) {
+LldInvokeResult mun_lld_link(LldFlavor flavor, int argc, const char * *argv) {
   std::string outputString, errorString;
   llvm::raw_string_ostream outputStream(outputString);
   llvm::raw_string_ostream errorStream(errorString);
   std::vector<const char*> args(argv, argv + argc);
   LldInvokeResult result;
-  switch(flavor)
-  {
-    case Elf:
-    {
-      args.insert(args.begin(), "lld");               // Issue #1: The first argument MUST be the executable name..
-      std::unique_lock<std::mutex> lock(_elfMutex);   // Issue #2: The ELF driver is not thread safe..
-      result.success = lld::elf::link(args, outputStream, errorStream, false, false);
-      break;
-    }
-    case Wasm:
-    {
-      std::unique_lock<std::mutex> lock(_wasmMutex);
-      result.success = lld::wasm::link(args, outputStream, errorStream, false, false);
-      break;
-    }
-    case MachO:
-    {
-      args.insert(args.begin(), "lld");
-      std::unique_lock <std::mutex> lock(_machOMutex);
-      result.success = lld::macho::link(args, outputStream, errorStream, false, false);
-      break;
-    }
-    case Coff:
-    {
-      args.insert(args.begin(), "lld.exe");           // Issue #1: The first argument MUST be the executable name..
-      std::unique_lock<std::mutex> lock(_coffMutex);  // Issue #2: The COFF driver is not thread safe..
-      result.success = lld::coff::link(args, outputStream, errorStream, false, false);
-      break;
-    }
-    default:
-      result.success = false;
-      break;
-  }
+  // argc & argc to llvm::ArrayRef
+  auto argsRef = llvm::ArrayRef<const char *>(args.data(), args.size());
+  auto drivers = std::vector<lld::DriverDef>();
+  auto re = lld::lldMain(argsRef, outputStream, errorStream, drivers);
+  result.success = re.retCode;
+
   // // Delete the global context and clear the global context pointer, so that it
   // // cannot be accessed anymore.
-  // lld::CommonLinkerContext::destroy();
   std::string resultMessage = errorStream.str() + outputStream.str();
   result.messages = mun_alloc_str(resultMessage);
   return result;

@@ -4,3 +4,4 @@ Cargo.lock
 
 # Build artifacts
 **/target/*
+.DS_Store
