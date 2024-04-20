@@ -22,6 +22,13 @@ std::mutex _elfMutex;
 std::mutex _machOMutex;
 std::mutex _wasmMutex;
 
+
+LLD_HAS_DRIVER(coff)
+LLD_HAS_DRIVER(elf)
+LLD_HAS_DRIVER(mingw)
+LLD_HAS_DRIVER(macho)
+LLD_HAS_DRIVER(wasm)
+
 extern "C" {
 
 enum LldFlavor {
@@ -30,7 +37,6 @@ enum LldFlavor {
   MachO = 2,
   Coff = 3,
 };
-
 struct LldInvokeResult {
   bool success;
   const char* messages;
@@ -48,19 +54,37 @@ LldInvokeResult mun_lld_link(LldFlavor flavor, int argc, const char * *argv) {
   std::string outputString, errorString;
   llvm::raw_string_ostream outputStream(outputString);
   llvm::raw_string_ostream errorStream(errorString);
-  std::vector<const char*> args(argv, argv + argc);
+  // std::vector<const char*> args(argv, argv + argc);
   LldInvokeResult result;
+
   // argc & argc to llvm::ArrayRef
-  auto argsRef = llvm::ArrayRef<const char *>(args.data(), args.size());
+  auto argsRef = llvm::ArrayRef<const char *>(argv, argc);
   auto drivers = std::vector<lld::DriverDef>();
-  auto re = lld::lldMain(argsRef, outputStream, errorStream, drivers);
-  result.success = re.retCode;
+  switch (flavor) {
+    case LldFlavor::Elf:
+      drivers.push_back({lld::Gnu, &lld::elf::link});
+      break;
+    case LldFlavor::MachO:
+      drivers.push_back({lld::Darwin, &lld::macho::link});
+      break;
+    case LldFlavor::Coff:
+      drivers.push_back({lld::WinLink, &lld::coff::link});
+      break;
+  }
+
+
+
+  auto re = lld::lldMain(argsRef, outputStream, errorStream,LLD_ALL_DRIVERS);
+  result.success = re.retCode == 0;
 
   // // Delete the global context and clear the global context pointer, so that it
   // // cannot be accessed anymore.
   std::string resultMessage = errorStream.str() + outputStream.str();
   result.messages = mun_alloc_str(resultMessage);
   return result;
+}
+void * getMain() {
+  return (void*)mun_lld_link;
 }
 
 }

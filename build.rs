@@ -1,4 +1,3 @@
-extern crate cc;
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
@@ -174,14 +173,14 @@ fn is_compatible_llvm(llvm_version: &Version) -> bool {
         "LLVM_SYS_{}_STRICT_VERSIONING",
         env!("CARGO_PKG_VERSION_MAJOR")
     ))
-        .is_some()
+    .is_some()
         || cfg!(feature = "strict-versioning");
     if strict {
         llvm_version.major == CRATE_VERSION.major && llvm_version.minor == CRATE_VERSION.minor
     } else {
         llvm_version.major >= CRATE_VERSION.major
             || (llvm_version.major == CRATE_VERSION.major
-            && llvm_version.minor >= CRATE_VERSION.minor)
+                && llvm_version.minor >= CRATE_VERSION.minor)
     }
 }
 
@@ -295,7 +294,7 @@ fn get_system_libraries() -> Vec<String> {
                     )
                 }
             }
-                .to_owned()
+            .to_owned()
         })
         .chain(get_system_libcpp().map(str::to_owned))
         .collect::<Vec<String>>()
@@ -377,7 +376,7 @@ fn get_llvm_cxxflags() -> String {
         "LLVM_SYS_{}_NO_CLEAN_CFLAGS",
         env!("CARGO_PKG_VERSION_MAJOR")
     ))
-        .is_some();
+    .is_some();
     if no_clean || target_env_is("msvc") {
         // MSVC doesn't accept -W... options, so don't try to strip them and
         // possibly strip something that should be retained. Also do nothing if
@@ -400,14 +399,17 @@ fn is_llvm_debug() -> bool {
 fn main() {
     // Build the extra wrapper functions.
     std::env::set_var("CXXFLAGS", get_llvm_cxxflags());
-    cc::Build::new()
-        .cpp(true).static_crt(true)
-        .file("wrapper/lld-c.cpp")
-        .compile("lldwrapper");
 
-    if cfg!(feature = "no-llvm-linking") {
-        return;
-    }
+    println!("cargo:rerun-if-changed=wrapper/lld-c.cpp");
+    println!("cargo:rerun-if-changed=wrapper/CMakeLists.txt");
+    let dst = cmake::Config::new("wrapper").static_crt(true).build();
+    // panic!("{:?}",dst);
+    println!("cargo:rustc-link-search=all={}\\build", dst.display());
+    println!("cargo:rustc-link-lib=static=lld-c");
+
+    // // if cfg!(feature = "no-llvm-linking") {
+    // //     return;
+    // // }
 
     let libdir = llvm_config("--libdir");
 
@@ -434,7 +436,7 @@ fn main() {
         "LLVM_SYS_{}_USE_DEBUG_MSVCRT",
         env!("CARGO_PKG_VERSION_MAJOR")
     ))
-        .is_some();
+    .is_some();
     if cfg!(target_env = "msvc") && (use_debug_msvcrt || is_llvm_debug()) {
         println!("cargo:rustc-link-lib=msvcrtd");
     }
@@ -445,7 +447,7 @@ fn main() {
         "LLVM_SYS_{}_FFI_WORKAROUND",
         env!("CARGO_PKG_VERSION_MAJOR")
     ))
-        .is_some();
+    .is_some();
     if force_ffi {
         println!("cargo:rustc-link-lib=dylib=ffi");
     }
