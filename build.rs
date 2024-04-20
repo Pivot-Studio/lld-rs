@@ -404,7 +404,7 @@ fn main() {
     println!("cargo:rerun-if-changed=wrapper/CMakeLists.txt");
     let dst = cmake::Config::new("wrapper").static_crt(true).build();
     // panic!("{:?}",dst);
-    println!("cargo:rustc-link-search=all={}\\build", dst.display());
+    println!("cargo:rustc-link-search=native={}/build", dst.display());
     println!("cargo:rustc-link-lib=static=lld-c");
 
     // // if cfg!(feature = "no-llvm-linking") {
